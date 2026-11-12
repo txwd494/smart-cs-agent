@@ -1,0 +1,28 @@
+# 构建上下文裁剪：只有运行所需内容进镜像。
+# tests/ 与 pytest.ini 不在排除之列，镜像内可直接跑 pytest 冒烟
+
+# 密钥与本地文件（绝不进镜像层）
+.env
+.env.example
+PROGRESS.md
+
+# 可重建产物：FAISS 索引由容器首次启动重建（见 docs/deployment.md）
+vector_store/
+
+# 开发与测试缓存
+__pycache__/
+*.pyc
+.pytest_cache/
+_test_*/
+*.log
+
+# 版本控制与部署文件自身
+.git/
+.gitignore
+.dockerignore
+Dockerfile
+docker-compose.yml
+
+# 文档（容器内无消费方）
+docs/
+README.md

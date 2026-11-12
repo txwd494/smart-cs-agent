@@ -1,0 +1,29 @@
+# 依赖清单（版本为实测兼容组合，见 README 的快速开始）
+# Python 3.12
+
+# LangGraph 多 Agent 编排生态
+langgraph==1.1.9
+langchain==1.2.15
+langchain-core==1.6.11
+langchain-openai==1.7.2
+
+# Web 服务
+fastapi==0.143.2
+uvicorn==0.54.0
+pydantic==2.13.3
+
+# 配置与外部依赖
+python-dotenv==1.2.4
+redis==8.1.0
+faiss-cpu==1.15.1
+numpy==2.5.4
+httpx==0.28.1
+
+# 可观测性（OpenTelemetry）
+opentelemetry-api==1.45.1
+opentelemetry-sdk==1.45.1
+opentelemetry-exporter-otlp==1.45.1
+
+# 测试
+pytest==9.1.1
+pytest-asyncio==1.4.0

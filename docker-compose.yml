@@ -1,0 +1,68 @@
+# 服务编排：app + redis 两个默认服务，观测后端为可选服务
+# 完整说明与环境变量表见 docs/deployment.md
+
+services:
+  app:
+    build: .
+    ports:
+      - "8000:8000"
+    # 密钥经 .env 注入运行时环境（.dockerignore 已保证它不进镜像层）
+    env_file:
+      - .env
+    environment:
+      # 覆盖 .env 的默认地址：容器网络内经服务名寻址 redis。
+      # compose 的 environment 优先级高于 env_file
+      REDIS_URL: redis://redis:6379/0
+    volumes:
+      # FAISS 索引落命名卷：容器重建后直接加载，不重新嵌入知识库
+      # （首次启动的嵌入是一次真实 API 调用，有成本）
+      - vector_store:/app/vector_store
+    depends_on:
+      redis:
+        condition: service_healthy
+    healthcheck:
+      # slim 镜像无 curl，用标准库发请求
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3)"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      # 启动宽限：lifespan 里要先嵌入或加载知识文档
+      start_period: 60s
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    # 淘汰策略：会话键全部带 TTL，volatile-ttl 写满时优先清剩余存活
+    # 时间最短（距上次活跃最久）的会话，保住活跃会话。
+    # 不用 allkeys-lru：它从全部键里静默逐出，会话历史无感知丢失
+    command: >
+      redis-server
+      --maxmemory 256mb
+      --maxmemory-policy volatile-ttl
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+    restart: unless-stopped
+
+  # 观测后端（可选）：默认不启动，需要看链路时显式启用
+  #   docker compose --profile observability up -d
+  # 启用后在 .env 设 OTEL_EXPORTER_OTLP_ENDPOINT=http://jaeger:4317
+  # （应用侧走 OTLP gRPC，对应 4317 端口），UI 在 http://localhost:16686
+  jaeger:
+    image: jaegertracing/all-in-one:1.62
+    profiles: ["observability"]
+    environment:
+      COLLECTOR_OTLP_ENABLED: "true"
+    ports:
+      - "16686:16686"
+      - "4317:4317"
+      - "4318:4318"
+    restart: unless-stopped
+
+volumes:
+  vector_store:
+  redis_data:
